@@ -1,6 +1,7 @@
 package com.neilab.plugins.tenacious
 
 import groovy.json.JsonSlurper
+import org.joda.time.DateTime
 
 class PersistentTaskData   {
 
@@ -38,7 +39,6 @@ class PersistentTaskData   {
         //lockedBy nullable: true
         failedAt nullable: true
         runAt nullable: true
-
     }
 
 
@@ -53,19 +53,24 @@ class PersistentTaskData   {
             handler = null
             failedAt = null
             active = false
-        }catch (PersistentException e) {
+        } catch (PersistentException|Exception e) {
             this.handler = parseStacktrace(e)
             this.attempts = Math.max(0,this.attempts) + 1
             this.failedAt = new Date()
-        } catch (Exception e) {
-            this.handler = parseStacktrace(e)
-            this.attempts = Math.max(0,this.attempts) + 1
-            this.failedAt = new Date()
+            this.runAt = nextRunDate()
+
+            if( persistentTask.maxAttempts && this.attempts > persistentTask.maxAttempts) {
+                this.active = false
+            }
         }
 
         return this.save(failOnError: options.failOnError)
     }
 
+    private  Date nextRunDate() {
+        Integer n = this.attempts ?: 0
+        return  DateTime.now().plusSeconds((5+n)*4).toDate()
+    }
 
     private Map parseJsonData() {
         def jsonSlurper = new JsonSlurper()

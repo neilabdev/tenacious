@@ -1,14 +1,17 @@
 package com.neilab.plugins.tenacious
 
 import grails.plugins.*
+import static grails.plugins.quartz.GrailsJobClassConstants.*;
 
 class  TenaciousGrailsPlugin extends Plugin {
 
     // the version or versions of Grails the plugin is designed for
     def grailsVersion = "3.0.0 > *"
     // resources that are excluded from plugin packaging
+
     def pluginExcludes = [
-        "grails-app/views/error.gsp"
+            "grails-app/views/error.gsp",
+            "**/com/neilab/plugins/tenacious/test/**"
     ]
 
     // TODO Fill in these fields
@@ -39,6 +42,10 @@ Brief summary/description of the plugin.
     // Online location of the plugin's browseable source code.
 //    def scm = [ url: "http://svn.codehaus.org/grails-plugins/" ]
 
+
+    //def dependsOn = [quartz: "* > 2.0"]
+    def loadAfter = ['quartz']
+
     Closure doWithSpring() { {->
             // TODO Implement runtime spring config (optional)
         }
@@ -46,6 +53,19 @@ Brief summary/description of the plugin.
 
     void doWithDynamicMethods() {
         // TODO Implement registering dynamic methods to classes (optional)
+
+        for (a in grailsApplication.getArtefacts("Job")) {
+            if (PersistentWorker.isAssignableFrom(a.clazz) ) { //}  a.clazz instanceof PersistentWorker) {
+                a.clazz.metaClass.static.run = {  ->
+                    String persistentWorkerClassName = a.clazz.name
+                    PersistentWorker w = Class.forName(persistentWorkerClassName).newInstance()
+                    w.runTasks()
+
+                     System.out.println("running Job ${a.clazz.name}")
+                }
+            }
+        }
+
     }
 
     void doWithApplicationContext() {

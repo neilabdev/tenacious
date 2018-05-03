@@ -8,7 +8,7 @@ class  TenaciousGrailsPlugin extends Plugin {
     // the version or versions of Grails the plugin is designed for
     def grailsVersion = "3.0.0 > *"
     // resources that are excluded from plugin packaging
-
+    def artefacts = [ com.neilab.plugins.tenacious.artefact.TenaciousArtefactHandler ]
     def pluginExcludes = [
             "grails-app/views/error.gsp",
             "**/com/neilab/plugins/tenacious/test/**"
@@ -56,14 +56,16 @@ Brief summary/description of the plugin.
 
         for (a in grailsApplication.getArtefacts("Job")) {
             if (PersistentWorker.isAssignableFrom(a.clazz) ) { //}  a.clazz instanceof PersistentWorker) {
-                a.clazz.metaClass.static.run = {  ->
+                a.clazz.metaClass.static.run = {  Map params = [:] ->
                     String persistentWorkerClassName = a.clazz.name
                     PersistentWorker w = Class.forName(persistentWorkerClassName).newInstance()
-                    w.runTasks()
-
-                     System.out.println("running Job ${a.clazz.name}")
+                    w.runTasks(params)
                 }
             }
+        }
+
+        for (ay in grailsApplication.getArtefacts("Task")) {
+          //  System.out.println("running task ${ay.clazz.name}")
         }
 
     }

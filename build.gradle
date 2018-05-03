@@ -40,7 +40,7 @@ dependencies {
   //  testCompile "org.grails:grails-gorm-testing-support"
     testCompile "org.grails:grails-plugin-testing"
     compile "org.grails.plugins:views-json:1.1.5"
-    compile 'org.grails.plugins:quartz:2.0.12'
+    compile 'org.grails.plugins:quartz:2.0.13'
 
 
     provided "org.springframework.boot:spring-boot-starter-tomcat"

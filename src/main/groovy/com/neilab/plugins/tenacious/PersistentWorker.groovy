@@ -11,9 +11,9 @@ import java.util.concurrent.Executors
 
 import groovy.json.*
 
-trait PersistentWorker <T extends PersistentWorker<T>>  {
+trait PersistentWorker<T extends PersistentWorker<T>> {
     Integer maxAttempts
-    String  queueName
+    String queueName
 
     def execute(context) {
         runTasks()
@@ -23,14 +23,32 @@ trait PersistentWorker <T extends PersistentWorker<T>>  {
         this.execute(null)
     }
 
-    static def run() {
+    def beforeWork() {
+
+    }
+
+    def afterWork() {
+
+    }
+
+    def beforeTask(PersistentTaskData data) {
+
+    }
+
+    def afterTask(PersistentTaskData data) {
+
+    }
+
+    static def run(Map params=[:]) {
         throw new UnsupportedOperationException("Unable to execute method which should have been dynamically overridden")
     }
 
-    void runTasks() {
+    void runTasks(Map params = [:]) {
+        def options = [failOnError: true, flush: false] << params
+
         Date now = new Date()
-        Map config = TenaciousUtil.getStaticPropertyValue(this.getClass(),"tenacious",Map,[:])
-        Integer ma =  maxAttempts ?: config.maxAttempts
+        Map config = TenaciousUtil.getStaticPropertyValue(this.getClass(), "tenacious", Map, [:])
+        Integer ma = maxAttempts ?: config.maxAttempts
         String qn = queueName ?: config.queueName
 
         def taskData = PersistentTaskData.where {
@@ -38,24 +56,36 @@ trait PersistentWorker <T extends PersistentWorker<T>>  {
                 attempts < ma
             }
 
-            if(qn) {
+            if (qn) {
                 queue == qn
             }
 
             runAt == null || runAt < now
 
             active == true
-        }.list(order:"desc", sort:"priority").eachWithIndex { PersistentTaskData task, int i ->
-            task.resume()
+        }.list(order: "desc", sort: "priority")
+
+        this.beforeWork()
+
+        for (task in taskData) {
+            PersistentTaskData.withTransaction { status ->
+                PersistentTaskData t = task.lock()
+                beforeTask(task)
+                task.resume(failOnError: options.failOnError, flush: options.flush)
+                afterTask(task)
+            }
         }
+
+        this.afterWork()
     }
 
-    static def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass, boolean immediate = false) {
+    static
+    def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass, boolean immediate = false) {
         this.scheduleTask(params, taskClass.newInstance(), immediate)
     }
 
     static def scheduleTask(Map<String, Object> params = [:], PersistentTask task, boolean immediate = false) {
-        TenaciousUtil.scheduleTask(params,task,null,immediate)
+        TenaciousUtil.scheduleTask(params, task, null, immediate)
     }
 
     private String parseStacktrace(Exception e) {

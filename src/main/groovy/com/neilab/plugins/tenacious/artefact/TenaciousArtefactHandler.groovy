@@ -16,4 +16,11 @@ class TenaciousArtefactHandler extends  ArtefactHandlerAdapter {
     TenaciousArtefactHandler() {
         super(TYPE, GrailsTaskClass.class, DefaultGrailsTaskClass.class, TYPE)
     }
+
+    @Override
+    boolean isArtefactClass(Class clazz) {
+        if (!super.isArtefactClass(clazz))
+            return false
+        return clazz.methods.find {it.name == "perform" } != null
+    }
 }

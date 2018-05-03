@@ -1,5 +1,6 @@
 package com.neilab.plugins.tenacious
 
+import grails.gorm.DetachedCriteria
 import groovy.json.JsonSlurper
 import org.joda.time.DateTime
 
@@ -17,7 +18,13 @@ class PersistentTaskData   {
   //  Date lockedAt
  //   String lockedBy
 
-    private persistentTask
+    private PersistentTask persistentTask
+
+    static DetachedCriteria getIsActive() {
+        def criteria = new DetachedCriteria(this).build {
+            eq 'active', true
+        }
+    }
 
     PersistentTask getTask() {
         if(persistentTask)
@@ -25,8 +32,6 @@ class PersistentTaskData   {
         persistentTask =  Class.forName(handler).newInstance()
         return persistentTask
     }
-
-    static transients = ['task']
 
     static mapping = {
         lastError type: 'text'
@@ -41,30 +46,41 @@ class PersistentTaskData   {
         runAt nullable: true
     }
 
+    static transients = ['task']
 
     def resume(Map extra=[:]) {
-        Map options = [failOnError: false] << extra
+        Map options = [failOnError: false, flush: false] << extra
         PersistentTask persistentTask = (PersistentTask)options.task ?: this.task
         this.runAt = new Date()
+
         try {
-            if([false].contains(persistentTask.perform(this.parseJsonData()))) {
-                throw new PersistentException("Tasked returned false")
+            withNewTransaction { status ->
+                //System.out.println("TaskData: ${this.id} params: ${this.params} - Running Task")
+                if([false].contains(persistentTask.perform(this.parseJsonData()))) {
+                    //System.out.println("TaskData: ${this.id} params: ${this.params} - Throwing Exception")
+                    throw new PersistentException("Task returned false")
+                }
             }
-            handler = null
-            failedAt = null
-            active = false
+
+            this.lastError = null
+            this.failedAt = null
+            this.attempts = Math.max(0,this.attempts ?: 1)
+            this.attempts = 1
+            this.active = false
+            //System.out.println("TaskData: ${this.id} params: ${this.params} - Finished Task active: ${this.active}")
         } catch (PersistentException|Exception e) {
-            this.handler = parseStacktrace(e)
+            this.lastError = parseStacktrace(e)
             this.attempts = Math.max(0,this.attempts) + 1
             this.failedAt = new Date()
             this.runAt = nextRunDate()
-
-            if( persistentTask.maxAttempts && this.attempts > persistentTask.maxAttempts) {
+            //System.out.println("TaskData: ${this.id} params: ${this.params} - Caught Exception  ${e}")
+            if(persistentTask.maxAttempts && this.attempts > persistentTask.maxAttempts) {
                 this.active = false
             }
         }
 
-        return this.save(failOnError: options.failOnError)
+        //System.out.println("TaskData: ${this.id} params: ${this.params} - Saving active: ${this.active}")
+        return this.save(failOnError: options.failOnError, flush: options.flush)
     }
 
     private  Date nextRunDate() {

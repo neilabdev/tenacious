@@ -31,12 +31,6 @@ class TenaciousUtil {
             taskData.runAt = DateTime.now().plusSeconds(task.minDelay).toDate()
         taskData.params = JsonOutput.toJson(params ?: [:])
 
-        if(immediate) {
-            processedTask = taskData.resume(task: task)
-        } else {
-            taskData.save()
-        }
-
-        return taskData
+        return  immediate ? taskData.resume(task: task) : taskData.save()
     }
 }

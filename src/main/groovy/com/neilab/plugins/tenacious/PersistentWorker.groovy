@@ -10,10 +10,12 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 import groovy.json.*
+import static  grails.util.Holders.*
 
 trait PersistentWorker<T extends PersistentWorker<T>> {
     Integer maxAttempts
     String queueName
+    def tenaciousService
 
     def execute(context) {
         runTasks()
@@ -44,43 +46,11 @@ trait PersistentWorker<T extends PersistentWorker<T>> {
     }
 
     void runTasks(Map params = [:]) {
-        def options = [failOnError: true, flush: false] << params
-
-        Date now = new Date()
-        Map config = TenaciousUtil.getStaticPropertyValue(this.getClass(), "tenacious", Map, [:])
-        Integer ma = maxAttempts ?: config.maxAttempts
-        String qn = queueName ?: config.queueName
-
-        def taskData = PersistentTaskData.where {
-            if (ma) {
-                attempts < ma
-            }
-
-            if (qn) {
-                queue == qn
-            }
-
-            runAt == null || runAt < now
-
-            active == true
-        }.list(order: "desc", sort: "priority")
-
-        this.beforeWork()
-
-        for (task in taskData) {
-            PersistentTaskData.withTransaction { status ->
-                PersistentTaskData t = task.lock()
-                beforeTask(task)
-                task.resume(failOnError: options.failOnError, flush: options.flush)
-                afterTask(task)
-            }
-        }
-
-        this.afterWork()
+        def ts = applicationContext.getBean("tenaciousService") //as TenaciousService
+        ts?.performTasks(params,this) //TenaciousUtil.performTasks(params,this)
     }
 
-    static
-    def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass, boolean immediate = false) {
+    static def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass, boolean immediate = false) {
         this.scheduleTask(params, taskClass.newInstance(), immediate)
     }
 

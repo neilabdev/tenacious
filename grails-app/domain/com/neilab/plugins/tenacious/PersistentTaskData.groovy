@@ -5,7 +5,7 @@ import groovy.json.JsonSlurper
 import org.joda.time.DateTime
 
 class PersistentTaskData   {
-
+    String id
     Integer priority = 0
     Integer attempts = 0
     String queue = "default"
@@ -15,6 +15,10 @@ class PersistentTaskData   {
     Date runAt
     Date failedAt
     Boolean active = true
+
+    Date dateCreated
+    Date lastUpdated
+
   //  Date lockedAt
  //   String lockedBy
 
@@ -34,8 +38,11 @@ class PersistentTaskData   {
     }
 
     static mapping = {
+        id generator: 'uuid', params: [separator: '-']
         lastError type: 'text'
         params type: 'text'
+        priority index: 'priority_runAt_idx'
+        runAt index: 'priority_runAt_idx'
     }
 
     static constraints = {
@@ -44,6 +51,8 @@ class PersistentTaskData   {
         //lockedBy nullable: true
         failedAt nullable: true
         runAt nullable: true
+        dateCreated nullable: true
+        lastUpdated nullable: true
     }
 
     static transients = ['task']
@@ -62,10 +71,8 @@ class PersistentTaskData   {
                 }
             }
 
-            this.lastError = null
             this.failedAt = null
             this.attempts = Math.max(0,this.attempts ?: 1)
-            this.attempts = 1
             this.active = false
             //System.out.println("TaskData: ${this.id} params: ${this.params} - Finished Task active: ${this.active}")
         } catch (PersistentException|Exception e) {

@@ -10,7 +10,7 @@ import spock.lang.*
 @Integration
 @Rollback
 class PersistentTaskWorkerSpec extends Specification  {
-
+    def tenaciousService
     void "task can be scheduled"() {
         given: "scheduled jobs"
             def task = [
@@ -20,7 +20,8 @@ class PersistentTaskWorkerSpec extends Specification  {
             def total_count = PersistentTaskData.count()
             def active_count = [before_run: PersistentTaskData.isActive.count() ]
         when: "processing jobs"
-            SampleJob.run(flush:true) //FIXME: Fix, while it works live, no inserts happen here despite correct save :(
+            tenaciousService.performTasks(SampleJob, flush:true)
+          //  SampleJob.run(flush:true) //FIXME: Fix, while it works live, no inserts happen here despite correct save :(
             /* def first_row = PersistentTaskData.findById(1) //NOTE: This causes updated
             first_row.lastError = "foo"
             first_row.active = false

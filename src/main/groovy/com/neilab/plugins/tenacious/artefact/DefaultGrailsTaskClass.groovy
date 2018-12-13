@@ -9,10 +9,19 @@ class DefaultGrailsTaskClass extends AbstractInjectableGrailsClass implements  G
     DefaultGrailsTaskClass(Class<?> clazz) {
         super(clazz, TenaciousArtefactHandler.TYPE)
     }
-/*
-    @Override
+
+
+/* @Override
     def perform(Map params) {
         getMetaClass().invokeMethod(getReferenceInstance(), "perform", [params]);
         return null
+    }  */
+/*
+    public void execute() {
+        getMetaClass().invokeMethod(getReferenceInstance(), EXECUTE, new Object[]{});
+    }
+
+    public void execute(JobExecutionContext context) {
+        getMetaClass().invokeMethod(getReferenceInstance(), EXECUTE, new Object[]{context});
     } */
 }

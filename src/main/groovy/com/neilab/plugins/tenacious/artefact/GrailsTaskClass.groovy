@@ -7,5 +7,6 @@ import org.grails.core.AbstractGrailsClass
 
 interface GrailsTaskClass extends  InjectableGrailsClass   {
 
+
     //def perform(Map params)
 }

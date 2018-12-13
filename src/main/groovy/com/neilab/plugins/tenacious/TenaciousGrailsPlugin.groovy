@@ -1,22 +1,28 @@
 package com.neilab.plugins.tenacious
 
+import com.neilab.plugins.tenacious.artefact.TenaciousArtefactHandler
 import grails.plugins.*
 import static grails.plugins.quartz.GrailsJobClassConstants.*;
 
-class  TenaciousGrailsPlugin extends Plugin {
+class TenaciousGrailsPlugin extends Plugin {
 
     // the version or versions of Grails the plugin is designed for
     def grailsVersion = "3.0.0 > *"
     // resources that are excluded from plugin packaging
-    def artefacts = [ com.neilab.plugins.tenacious.artefact.TenaciousArtefactHandler ]
+    def artefacts = [com.neilab.plugins.tenacious.artefact.TenaciousArtefactHandler]
     def pluginExcludes = [
             "grails-app/views/error.gsp",
             "**/com/neilab/plugins/tenacious/test/**"
     ]
 
+    def watchedResources = [
+            "file:./grails-app/tasks/**/*Task.groovy",
+            "file:../../plugins/*/tasks/**/*Task.groovy"
+    ]
+
     // TODO Fill in these fields
     def title = "Tenacious" // Headline display name of the plugin
-    def author = "Your name"
+    def author = "ghost"
     def authorEmail = ""
     def description = '''\
 Brief summary/description of the plugin.
@@ -42,11 +48,11 @@ Brief summary/description of the plugin.
     // Online location of the plugin's browseable source code.
 //    def scm = [ url: "http://svn.codehaus.org/grails-plugins/" ]
 
-
     //def dependsOn = [quartz: "* > 2.0"]
     def loadAfter = ['quartz']
 
-    Closure doWithSpring() { {->
+    Closure doWithSpring() {
+        { ->
             // TODO Implement runtime spring config (optional)
         }
     }
@@ -55,8 +61,8 @@ Brief summary/description of the plugin.
         // TODO Implement registering dynamic methods to classes (optional)
 
         for (a in grailsApplication.getArtefacts("Job")) {
-            if (PersistentWorker.isAssignableFrom(a.clazz) ) { //}  a.clazz instanceof PersistentWorker) {
-                a.clazz.metaClass.static.run = {  Map params = [:] ->
+            if (PersistentWorker.isAssignableFrom(a.clazz)) { //}  a.clazz instanceof PersistentWorker) {
+                a.clazz.metaClass.static.run = { Map params = [:] ->
                     String persistentWorkerClassName = a.clazz.name
                     PersistentWorker w = Class.forName(persistentWorkerClassName).newInstance()
                     w.runTasks(params)
@@ -65,7 +71,7 @@ Brief summary/description of the plugin.
         }
 
         for (ay in grailsApplication.getArtefacts("Task")) {
-          //  System.out.println("running task ${ay.clazz.name}")
+            //System.out.println("running task ${ay}")
         }
 
     }
@@ -78,6 +84,19 @@ Brief summary/description of the plugin.
         // TODO Implement code that is executed when any artefact that this plugin is
         // watching is modified and reloaded. The event contains: event.source,
         // event.application, event.manager, event.ctx, and event.plugin.
+
+        if (event.application.isArtefactOfType(TenaciousArtefactHandler.TYPE, event.source)) {
+            def oldClass = event.application.getTaskClass(event.source.name)
+            event.application.addArtefact(TenaciousArtefactHandler.TYPE, event.source)
+
+            // Reload subclasses
+            event.application.taskClasses.each {
+                if (it?.clazz != event.source && oldClass.clazz.isAssignableFrom(it?.clazz)) {
+                    def newClass = event.application.classLoader.reloadClass(it.clazz.name)
+                    event.application.addArtefact(TenaciousArtefactHandler.TYPE, newClass)
+                }
+            }
+        }
     }
 
     void onConfigChange(Map<String, Object> event) {

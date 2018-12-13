@@ -5,7 +5,8 @@ import grails.transaction.Transactional
 
 @Transactional
 class TenaciousService {
-
+    def tenaciousFactoryService
+    
     void performTasks(Map params, PersistentWorker worker) {
         def options = [failOnError: true, flush: false] << params
         Date now = new Date()
@@ -42,12 +43,13 @@ class TenaciousService {
     }
 
     void performTasks(Map params, Class<PersistentWorker> workerClass) {
-        PersistentWorker worker = workerClass.newInstance()
+        PersistentWorker worker =  workerClass.newInstance()
         performTasks(params, worker)
     }
 
 
     def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass, boolean immediate = false) {
+        def artifactInstance = tenaciousFactoryService[taskClass.name] ?: taskClass.newInstance()
         this.scheduleTask(params, taskClass.newInstance(), immediate)
     }
 

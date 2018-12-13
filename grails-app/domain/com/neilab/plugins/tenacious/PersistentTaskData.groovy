@@ -1,6 +1,7 @@
 package com.neilab.plugins.tenacious
 
 import grails.gorm.DetachedCriteria
+import grails.util.Holders
 import groovy.json.JsonSlurper
 import org.joda.time.DateTime
 
@@ -33,7 +34,12 @@ class PersistentTaskData   {
     PersistentTask getTask() {
         if(persistentTask)
             return persistentTask
-        persistentTask =  Class.forName(handler).newInstance()
+
+        TenaciousFactoryService  tenaciousFactoryService =
+                Holders.grailsApplication.mainContext.getBean("tenaciousFactoryService")
+        def injectedTask = tenaciousFactoryService[handler]
+
+        persistentTask =  injectedTask ?: Class.forName(handler).newInstance()
         return persistentTask
     }
 

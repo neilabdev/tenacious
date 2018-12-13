@@ -11,6 +11,7 @@ import static org.grails.io.support.GrailsResourceUtils.REGEX_FILE_SEPARATOR
 class TenaciousArtefactHandler extends  ArtefactHandlerAdapter {
 
     static final String TYPE = "Task"
+
     public static Pattern TASK_PATH_PATTERN = Pattern.compile(".+" + REGEX_FILE_SEPARATOR + GRAILS_APP_DIR + REGEX_FILE_SEPARATOR + "tasks" + REGEX_FILE_SEPARATOR + "(.+)\\.(groovy)")
 
     TenaciousArtefactHandler() {

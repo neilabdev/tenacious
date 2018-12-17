@@ -48,13 +48,13 @@ class TenaciousService {
     }
 
 
-    def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass, boolean immediate = false) {
+    def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass,String action = null,  boolean immediate = false) {
         def artifactInstance = tenaciousFactoryService[taskClass.name] ?: taskClass.newInstance()
-        this.scheduleTask(params, taskClass.newInstance(), immediate)
+        this.scheduleTask(params, (PersistentTask)artifactInstance,action, immediate)
     }
 
-    def scheduleTask(Map<String, Object> params = [:], PersistentTask task, boolean immediate = false) {
-        TenaciousUtil.scheduleTask(params, task, null, immediate)
+    def scheduleTask(Map<String, Object> params = [:], PersistentTask task, String action = null, boolean immediate = false) {
+        TenaciousUtil.scheduleTask(params, task, action,null, immediate)
     }
 
 }

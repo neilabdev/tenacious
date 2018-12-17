@@ -50,12 +50,12 @@ trait PersistentWorker<T extends PersistentWorker<T>> {
         ts?.performTasks(params,this) //TenaciousUtil.performTasks(params,this)
     }
 
-    static def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass, boolean immediate = false) {
+    static def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass,String action = null, boolean immediate = false) {
         this.scheduleTask(params, taskClass.newInstance(), immediate)
     }
 
-    static def scheduleTask(Map<String, Object> params = [:], PersistentTask task, boolean immediate = false) {
-        TenaciousUtil.scheduleTask(params, task, null, immediate)
+    static def scheduleTask(Map<String, Object> params = [:], PersistentTask task, String action = null, boolean immediate = false) {
+        TenaciousUtil.scheduleTask(params, task,action, null, immediate)
     }
 
     private String parseStacktrace(Exception e) {

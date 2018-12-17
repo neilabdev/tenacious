@@ -11,6 +11,7 @@ class PersistentTaskData   {
     Integer attempts = 0
     String queue = "default"
     String handler
+    String action
     String params
     String lastError
     Date runAt
@@ -47,6 +48,9 @@ class PersistentTaskData   {
         id generator: 'uuid', params: [separator: '-']
         lastError type: 'text'
         params type: 'text'
+        active  index: 'handler_action_active_idx'
+        handler index: 'handler_action_active_idx'
+        action index: 'handler_action_active_idx'
         priority index: 'priority_runAt_idx'
         runAt index: 'priority_runAt_idx'
     }
@@ -55,6 +59,7 @@ class PersistentTaskData   {
         lastError nullable: true
         //lockedAt nullable: true
         //lockedBy nullable: true
+        action nullable: true
         failedAt nullable: true
         runAt nullable: true
         dateCreated nullable: true

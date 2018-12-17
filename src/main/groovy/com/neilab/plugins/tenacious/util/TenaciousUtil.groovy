@@ -19,13 +19,22 @@ class TenaciousUtil {
         return defaultValue
     }
 
-    static def scheduleTask(Map<String, Object> params = [:], PersistentTask task, String queue = null, boolean immediate = false) { //TODO: MOVE TO SERVICE
+    static def scheduleTask(Map<String, Object> params = [:], PersistentTask task, String actionName = null, String queue = null, boolean immediate = false) { //TODO: MOVE TO SERVICE
         Boolean processedTask = false
         //TODO: Throw excption if task in wrong queue
+        String taskClassName = task.getClass().name
         Map config = getStaticPropertyValue(task.getClass(),"tenacious",Map,[:])
-        PersistentTaskData taskData = new PersistentTaskData(handler: task.getClass().name)
+        PersistentTaskData taskData =   (actionName ?
+                PersistentTaskData.where {
+                    handler == taskClassName
+                    action == actionName
+                    active == true
+                }.get() : null) ?: new PersistentTaskData(handler: taskClassName)
+
+
         taskData.priority = task.priority ?: config.priority ?: 1
         taskData.queue = task.queueName ?: config.queueName ?: queue ?: "default"
+        taskData.attempts = Math.max(0, taskData.attempts - 1)
         //TODO: If no queue specified, it should probably be on the on the class upon which it was scheduled
         if(task.minDelay?.intValue() > 0)
             taskData.runAt = DateTime.now().plusSeconds(task.minDelay).toDate()
@@ -38,7 +47,7 @@ class TenaciousUtil {
     static void performTasks(Map params, PersistentWorker worker) { //TODO: Move to Service
         def options = [failOnError: true, flush: false] << params
         Date now = new Date()
-        Map config = TenaciousUtil.getStaticPropertyValue(worker.getClass(), "tenacious", Map, [:])
+        Map config = getStaticPropertyValue(worker.getClass(), "tenacious", Map, [:])
         Integer ma = worker.maxAttempts ?: config.maxAttempts
         String qn = worker.queueName ?: config.queueName
 

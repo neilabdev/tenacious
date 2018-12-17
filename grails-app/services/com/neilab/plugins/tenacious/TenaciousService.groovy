@@ -8,6 +8,8 @@ class TenaciousService {
     def tenaciousFactoryService
     
     void performTasks(Map params, PersistentWorker worker) {
+        worker.initWork()
+
         def options = [failOnError: true, flush: false] << params
         Date now = new Date()
         Map config = TenaciousUtil.getStaticPropertyValue(worker.getClass(), "tenacious", Map, [:])
@@ -15,7 +17,7 @@ class TenaciousService {
         String qn = worker.queueName ?: config.queueName
 
         def taskData = PersistentTaskData.where {
-            if (ma) {
+            if (ma instanceof Integer && ma > 0) {
                 attempts < ma
             }
 
@@ -47,13 +49,20 @@ class TenaciousService {
         performTasks(params, worker)
     }
 
+    def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass,  boolean immediate = false) {
+        this.scheduleTask(params, taskClass,null, immediate)
+    }
 
-    def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass,String action = null,  boolean immediate = false) {
+    def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass,String action,  boolean immediate = false) {
         def artifactInstance = tenaciousFactoryService[taskClass.name] ?: taskClass.newInstance()
         this.scheduleTask(params, (PersistentTask)artifactInstance,action, immediate)
     }
 
-    def scheduleTask(Map<String, Object> params = [:], PersistentTask task, String action = null, boolean immediate = false) {
+    def scheduleTask(Map<String, Object> params = [:], PersistentTask task,  boolean immediate = false) {
+        TenaciousUtil.scheduleTask(params, task, null,null, immediate)
+    }
+
+    def scheduleTask(Map<String, Object> params = [:], PersistentTask task, String action , boolean immediate = false) {
         TenaciousUtil.scheduleTask(params, task, action,null, immediate)
     }
 

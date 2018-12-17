@@ -19,7 +19,17 @@ class TenaciousUtil {
         return defaultValue
     }
 
-    static def scheduleTask(Map<String, Object> params = [:], PersistentTask task, String actionName = null, String queue = null, boolean immediate = false) { //TODO: MOVE TO SERVICE
+
+    static def scheduleTask(Map<String, Object> params = [:], PersistentTask task ,  boolean immediate = false) {
+        this.scheduleTask(params,task,null,null,immediate)
+    }
+
+
+    static def scheduleTask(Map<String, Object> params = [:], PersistentTask task, String actionName  ,  boolean immediate = false) {
+        this.scheduleTask(params,task,actionName,null,immediate)
+    }
+
+    static def scheduleTask(Map<String, Object> params = [:], PersistentTask task, String actionName  , String queue  , boolean immediate = false) { //TODO: MOVE TO SERVICE
         Boolean processedTask = false
         //TODO: Throw excption if task in wrong queue
         String taskClassName = task.getClass().name

@@ -1,7 +1,7 @@
 package com.neilab.plugins.tenacious
 
 import com.neilab.plugins.tenacious.util.TenaciousUtil
-import grails.util.GrailsClassUtils
+import com.neilab.plugins.tenacious.TenaciousService
 import grails.util.GrailsNameUtils
 import groovy.transform.CompileStatic
 import org.joda.time.DateTime
@@ -13,7 +13,7 @@ import groovy.json.*
 import static  grails.util.Holders.*
 
 trait PersistentWorker<T extends PersistentWorker<T>> {
-    Integer maxAttempts
+    Integer maxAttempts = 7
     String queueName
     def tenaciousService
 
@@ -23,6 +23,10 @@ trait PersistentWorker<T extends PersistentWorker<T>> {
 
     def execute() {
         this.execute(null)
+    }
+
+    def initWork() {
+
     }
 
     def beforeWork() {
@@ -50,12 +54,21 @@ trait PersistentWorker<T extends PersistentWorker<T>> {
         ts?.performTasks(params,this) //TenaciousUtil.performTasks(params,this)
     }
 
+
+
     static def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass, boolean immediate = false) {
-        this.scheduleTask(params, taskClass.newInstance(), immediate)
+        this.scheduleTask(params,taskClass,(String)null,immediate)
     }
 
-    static def scheduleTask(Map<String, Object> params = [:], PersistentTask task, boolean immediate = false) {
-        TenaciousUtil.scheduleTask(params, task, null, immediate)
+    static def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass,String action, boolean immediate = false) {
+        //TODO:Refactor
+        def ts = applicationContext.getBean("tenaciousService")  as TenaciousService
+        ts?.scheduleTask(params, taskClass,action, immediate)
+    }
+
+    static def scheduleTask(Map<String, Object> params = [:], PersistentTask task, String action , boolean immediate = false) {
+        //TODO:Refactor
+        TenaciousUtil.scheduleTask(params, task,action, null, immediate)
     }
 
     private String parseStacktrace(Exception e) {

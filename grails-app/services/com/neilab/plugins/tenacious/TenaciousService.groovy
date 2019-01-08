@@ -3,6 +3,8 @@ package com.neilab.plugins.tenacious
 import com.neilab.plugins.tenacious.util.TenaciousUtil
 import grails.transaction.Transactional
 
+import java.util.concurrent.TimeUnit
+
 @Transactional
 class TenaciousService {
     def tenaciousFactoryService
@@ -28,11 +30,14 @@ class TenaciousService {
             runAt == null || runAt < now
 
             active == true
-        }.list(order: "desc", sort: "priority")
+        }.list(order: "desc", sort: "priority", max: worker.maxJobs) //TODO: make max configurable
 
         worker.beforeWork()
 
         for (task in taskData) {
+            if((worker.sleepInterval ?: 0) > 0) {
+                TimeUnit.MILLISECONDS.sleep(worker.sleepInterval)
+            }
             PersistentTaskData.withTransaction { status ->
                 PersistentTaskData t = task //.lock()
                 worker.beforeTask(task)

@@ -7,7 +7,7 @@ trait PersistentTask { // or PersistentTaskAbility
 
     String queueName //= "default"
     Integer priority //= 1
-    Integer maxAttempts// = 25
+    Integer maxAttempts = 5
     Integer maxRuntime //= 0
     Integer minDelay //= 0
 

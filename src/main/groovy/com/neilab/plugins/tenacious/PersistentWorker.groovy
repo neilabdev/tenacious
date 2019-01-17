@@ -14,8 +14,8 @@ import static  grails.util.Holders.*
 
 trait PersistentWorker<T extends PersistentWorker<T>> {
     Integer maxAttempts = 7
-    Integer maxJobs = 250
-    Long sleepInterval = 0
+    Integer maxJobs = 250 //maxTasks
+    Long restInterval = 0
     String queueName
     def tenaciousService
 

@@ -35,14 +35,15 @@ class TenaciousService {
         worker.beforeWork()
 
         for (task in taskData) {
-            if((worker.sleepInterval ?: 0) > 0) {
-                TimeUnit.MILLISECONDS.sleep(worker.sleepInterval)
-            }
             PersistentTaskData.withTransaction { status ->
                 PersistentTaskData t = task //.lock()
                 worker.beforeTask(task)
                 task.resume(failOnError: options.failOnError, flush: options.flush)
                 worker.afterTask(task)
+            }
+
+            if((worker.restInterval ?: 0) > 0) {
+                TimeUnit.MILLISECONDS.sleep(worker.restInterval)
             }
         }
 

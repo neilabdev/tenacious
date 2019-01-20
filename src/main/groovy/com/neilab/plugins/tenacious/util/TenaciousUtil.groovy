@@ -34,19 +34,21 @@ class TenaciousUtil {
         //TODO: Throw excption if task in wrong queue
         String taskClassName = task.getClass().name
         Map config = getStaticPropertyValue(task.getClass(),"tenacious",Map,[:])
-        PersistentTaskData taskData =   (actionName ?
+        PersistentTaskData existingTaskData = null
+        PersistentTaskData taskData =   (actionName ? (existingTaskData =
                 PersistentTaskData.where {
                     handler == taskClassName
                     action == actionName
                     active == true
-                }.get() : null) ?: new PersistentTaskData(handler: taskClassName)
+                }.get()) : null) ?: new PersistentTaskData(handler: taskClassName)
 
 
+        taskData.action = actionName
         taskData.priority = task.priority ?: config.priority ?: 1
         taskData.queue = task.queueName ?: config.queueName ?: queue ?: "default"
         taskData.attempts = Math.max(0, taskData.attempts - 1)
         //TODO: If no queue specified, it should probably be on the on the class upon which it was scheduled
-        if(task.minDelay?.intValue() > 0)
+        if(!existingTaskData && task.minDelay?.intValue() > 0)
             taskData.runAt = DateTime.now().plusSeconds(task.minDelay).toDate()
         taskData.params = JsonOutput.toJson(params ?: [:])
 

@@ -1,5 +1,7 @@
 package com.neilab.plugins.tenacious
 
+import com.neilab.plugins.tenacious.exception.CancelException
+import com.neilab.plugins.tenacious.exception.PersistentException
 import grails.gorm.DetachedCriteria
 import grails.util.Holders
 import groovy.json.JsonSlurper
@@ -85,7 +87,14 @@ class PersistentTaskData   {
             this.failedAt = null
             this.attempts = Math.max(0,this.attempts ?: 1)
             this.active = false
-            //System.out.println("TaskData: ${this.id} params: ${this.params} - Finished Task active: ${this.active}")
+        } catch (CancelException c) {
+            this.lastError = parseStacktrace(c)
+            this.attempts = Math.max(0,this.attempts) + 1
+            this.failedAt = new Date()
+            this.active = false
+            if(persistentTask.maxAttempts && this.attempts > persistentTask.maxAttempts) {
+                this.active = false
+            }
         } catch (PersistentException|Exception e) {
             this.lastError = parseStacktrace(e)
             this.attempts = Math.max(0,this.attempts) + 1

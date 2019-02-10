@@ -1,4 +1,4 @@
-package com.neilab.plugins.tenacious
+package com.neilab.plugins.tenacious.exception
 
 import groovy.transform.InheritConstructors
 

@@ -56,7 +56,7 @@ class TenaciousUtil {
     }
 
 
-    static void performTasks(Map params, PersistentWorker worker) { //TODO: Move to Service
+    static void performTasks(Map params, PersistentWorker worker) { //TODO: depricate in favor of service version
         def options = [failOnError: true, flush: false] << params
         Date now = new Date()
         Map config = getStaticPropertyValue(worker.getClass(), "tenacious", Map, [:])

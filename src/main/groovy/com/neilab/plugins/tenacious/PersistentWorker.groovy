@@ -20,7 +20,12 @@ trait PersistentWorker<T extends PersistentWorker<T>> {
     def tenaciousService
 
     def execute(context) {
-        runTasks()
+        try {
+            runTasks()
+        } catch(Exception e) {
+            e.printStackTrace()
+        }
+
     }
 
     def execute() {
@@ -55,7 +60,6 @@ trait PersistentWorker<T extends PersistentWorker<T>> {
         def ts = applicationContext.getBean("tenaciousService") //as TenaciousService
         ts?.performTasks(params,this) //TenaciousUtil.performTasks(params,this)
     }
-
 
 
     static def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass, boolean immediate = false) {

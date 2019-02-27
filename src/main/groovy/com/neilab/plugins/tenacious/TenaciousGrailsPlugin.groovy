@@ -1,8 +1,6 @@
 package com.neilab.plugins.tenacious
-
 import com.neilab.plugins.tenacious.artefact.TenaciousArtefactHandler
 import grails.plugins.*
-import static grails.plugins.quartz.GrailsJobClassConstants.*;
 
 class TenaciousGrailsPlugin extends Plugin {
 
@@ -17,7 +15,8 @@ class TenaciousGrailsPlugin extends Plugin {
 
     def watchedResources = [
             "file:./grails-app/tasks/**/*Task.groovy",
-            "file:../../plugins/*/tasks/**/*Task.groovy"
+            "file:../../plugins/*/tasks/**/*Task.groovy",
+            "file:./grails-app/services/**/*Service.groovy"
     ]
 
     // TODO Fill in these fields
@@ -50,6 +49,7 @@ Brief summary/description of the plugin.
 
     //def dependsOn = [quartz: "* > 2.0"]
     def loadAfter = ['quartz']
+    def observe = ['quartz']
 
     Closure doWithSpring() {
         { ->
@@ -81,22 +81,22 @@ Brief summary/description of the plugin.
     }
 
     void onChange(Map<String, Object> event) {
-        // TODO Implement code that is executed when any artefact that this plugin is
-        // watching is modified and reloaded. The event contains: event.source,
-        // event.application, event.manager, event.ctx, and event.plugin.
 
-        if (event.application.isArtefactOfType(TenaciousArtefactHandler.TYPE, event.source)) {
-            def oldClass = event.application.getTaskClass(event.source.name)
-            event.application.addArtefact(TenaciousArtefactHandler.TYPE, event.source)
+        if(event.source) {
+            if (event.application.isArtefactOfType(TenaciousArtefactHandler.TYPE, event.source)) {
+                def oldClass = event.application.getTaskClass(event.source.name)
+                event.application.addArtefact(TenaciousArtefactHandler.TYPE, event.source)
 
-            // Reload subclasses
-            event.application.taskClasses.each {
-                if (it?.clazz != event.source && oldClass.clazz.isAssignableFrom(it?.clazz)) {
-                    def newClass = event.application.classLoader.reloadClass(it.clazz.name)
-                    event.application.addArtefact(TenaciousArtefactHandler.TYPE, newClass)
+                // Reload subclasses
+                event.application.taskClasses.each {
+                    if (it?.clazz != event.source && oldClass.clazz.isAssignableFrom(it?.clazz)) {
+                        def newClass = event.application.classLoader.reloadClass(it.clazz.name)
+                        event.application.addArtefact(TenaciousArtefactHandler.TYPE, newClass)
+                    }
                 }
             }
         }
+
     }
 
     void onConfigChange(Map<String, Object> event) {
@@ -106,5 +106,12 @@ Brief summary/description of the plugin.
 
     void onShutdown(Map<String, Object> event) {
         // TODO Implement code that is executed when the application shuts down (optional)
+    }
+
+    private boolean hasHibernate(manager) {
+        manager?.hasGrailsPlugin("hibernate") ||
+                manager?.hasGrailsPlugin("hibernate3") ||
+                manager?.hasGrailsPlugin("hibernate4") ||
+                manager?.hasGrailsPlugin("hibernate5")
     }
 }

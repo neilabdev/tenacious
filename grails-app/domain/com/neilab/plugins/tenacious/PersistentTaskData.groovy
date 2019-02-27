@@ -5,8 +5,9 @@ import com.neilab.plugins.tenacious.exception.PersistentException
 import grails.gorm.DetachedCriteria
 import grails.util.Holders
 import groovy.json.JsonSlurper
+import groovy.util.logging.Slf4j
 import org.joda.time.DateTime
-
+@Slf4j
 class PersistentTaskData   {
     String id
     Integer priority = 0
@@ -23,8 +24,8 @@ class PersistentTaskData   {
     Date dateCreated
     Date lastUpdated
 
-  //  Date lockedAt
- //   String lockedBy
+    //  Date lockedAt
+    //  String lockedBy
 
     private PersistentTask persistentTask
 
@@ -77,13 +78,10 @@ class PersistentTaskData   {
 
         try {
             withNewTransaction { status ->
-                //System.out.println("TaskData: ${this.id} params: ${this.params} - Running Task")
                 if([false].contains(persistentTask.perform(this.parseJsonData()))) {
-                    //System.out.println("TaskData: ${this.id} params: ${this.params} - Throwing Exception")
                     throw new PersistentException("Task returned false")
                 }
             }
-
             this.failedAt = null
             this.attempts = Math.max(0,this.attempts ?: 1)
             this.active = false
@@ -95,19 +93,23 @@ class PersistentTaskData   {
             if(persistentTask.maxAttempts && this.attempts > persistentTask.maxAttempts) {
                 this.active = false
             }
+            log.info("task cancelled with id: ${this.id} params: ${this.params}  exception message: '${c.message}'")
         } catch (PersistentException|Exception e) {
             this.lastError = parseStacktrace(e)
             this.attempts = Math.max(0,this.attempts) + 1
             this.failedAt = new Date()
             this.runAt = nextRunDate()
-            //System.out.println("TaskData: ${this.id} params: ${this.params} - Caught Exception  ${e}")
             if(persistentTask.maxAttempts && this.attempts > persistentTask.maxAttempts) {
                 this.active = false
             }
+            log.warn("failed execution of task id: ${this.id} params: ${this.params}  exception: ${e.stackTrace.join("\n\t")}")
         }
 
-        //System.out.println("TaskData: ${this.id} params: ${this.params} - Saving active: ${this.active}")
-        return this.save(failOnError: options.failOnError, flush: options.flush)
+        try {
+            return this.save(failOnError: options.failOnError, flush: options.flush)
+        } catch(Exception e) {
+            log.error("Unable to save persistent job state failure with id: ${this.id} because: ${e.stackTrace.join("\n\t")}")
+        }
     }
 
     private  Date nextRunDate() {

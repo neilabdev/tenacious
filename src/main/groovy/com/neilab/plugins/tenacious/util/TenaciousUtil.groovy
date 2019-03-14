@@ -3,6 +3,7 @@ package com.neilab.plugins.tenacious.util
 import com.neilab.plugins.tenacious.PersistentTask
 import com.neilab.plugins.tenacious.PersistentTaskData
 import com.neilab.plugins.tenacious.PersistentWorker
+import grails.util.Environment
 import grails.util.GrailsClassUtils
 import groovy.json.JsonOutput
 import org.joda.time.DateTime
@@ -41,7 +42,7 @@ class TenaciousUtil {
                     action == actionName
                     active == true
                 }.get()) : null) ?: new PersistentTaskData(handler: taskClassName)
-
+        Boolean is_testing = false // (Environment.current ==  Environment.TEST)
 
         taskData.action = actionName
         taskData.priority = task.priority ?: config.priority ?: 1
@@ -52,7 +53,9 @@ class TenaciousUtil {
             taskData.runAt = DateTime.now().plusSeconds(task.minDelay).toDate()
         taskData.params = JsonOutput.toJson(params ?: [:])
 
-        return  immediate ? taskData.resume(task: task) : taskData.save()
+
+
+        return  (is_testing || immediate ) ? taskData.resume(task: task) : taskData.save()
     }
 
 

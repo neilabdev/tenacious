@@ -2,14 +2,15 @@ package com.neilab.plugins.tenacious
 
 import com.neilab.plugins.tenacious.util.TenaciousUtil
 import grails.transaction.Transactional
-import org.apache.commons.logging.impl.SLF4JLog
+import groovy.util.logging.Slf4j
 
 import java.util.concurrent.TimeUnit
 
+@Slf4j
 @Transactional
 class TenaciousService {
     def tenaciousFactoryService
-    def transactional = false
+    //def transactional = false
 
     void performTasks(Map params, PersistentWorker worker) {
         def options = [failOnError: true, flush: false] << params

@@ -90,18 +90,17 @@ class PersistentTaskData   {
             this.attempts = Math.max(0,this.attempts) + 1
             this.failedAt = new Date()
             this.active = false
-            if(persistentTask.maxAttempts && this.attempts > persistentTask.maxAttempts) {
-                this.active = false
-            }
             log.info("task cancelled with id: ${this.id} params: ${this.params}  exception message: '${c.message}'")
-        } catch (PersistentException|Exception e) {
+        } catch (Exception e) {
             this.lastError = parseStacktrace(e)
             this.attempts = Math.max(0,this.attempts) + 1
             this.failedAt = new Date()
             this.runAt = nextRunDate()
+
             if(persistentTask.maxAttempts && this.attempts > persistentTask.maxAttempts) {
                 this.active = false
             }
+
             log.warn("failed execution of task id: ${this.id} params: ${this.params}  exception: ${e.stackTrace.join("\n\t")}")
         }
 

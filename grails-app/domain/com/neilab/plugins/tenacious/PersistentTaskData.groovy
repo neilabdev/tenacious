@@ -2,12 +2,14 @@ package com.neilab.plugins.tenacious
 
 import com.neilab.plugins.tenacious.exception.CancelException
 import com.neilab.plugins.tenacious.exception.PersistentException
+import grails.compiler.GrailsCompileStatic
 import grails.gorm.DetachedCriteria
 import grails.util.Holders
 import groovy.json.JsonSlurper
 import groovy.util.logging.Slf4j
 import org.joda.time.DateTime
 @Slf4j
+@GrailsCompileStatic
 class PersistentTaskData   {
     String id
     Integer priority = 0
@@ -39,11 +41,10 @@ class PersistentTaskData   {
         if(persistentTask)
             return persistentTask
 
-        TenaciousFactoryService  tenaciousFactoryService =
-                Holders.grailsApplication.mainContext.getBean("tenaciousFactoryService")
+        TenaciousFactoryService  tenaciousFactoryService = (TenaciousFactoryService)  Holders.grailsApplication.mainContext.getBean("tenaciousFactoryService")
         def injectedTask = tenaciousFactoryService[handler]
 
-        persistentTask =  injectedTask ?: Class.forName(handler).newInstance()
+        persistentTask = (PersistentTask) (injectedTask instanceof PersistentTask ? injectedTask : Class.forName(handler).newInstance())
         return persistentTask
     }
 
@@ -73,7 +74,7 @@ class PersistentTaskData   {
 
     def resume(Map extra=[:]) {
         Map options = [failOnError: false, flush: false] << extra
-        PersistentTask persistentTask = (PersistentTask)options.task ?: this.task
+        PersistentTask persistentTask = (PersistentTask)(options.task instanceof PersistentTask ? options.task :  this.task)
         this.runAt = new Date()
 
         Boolean enableSavepoint = Holders.grailsApplication.config.getProperty("tenacious.dataSource.savePoint",Boolean,false)
@@ -129,7 +130,7 @@ class PersistentTaskData   {
     private Map parseJsonData() {
         def jsonSlurper = new JsonSlurper()
         def object = this.params ? jsonSlurper.parseText(this.params) : [:]
-        return object instanceof  Map ? object : [:]
+        return (Map)(object instanceof  Map ? object : [:])
     }
 
     private String parseStacktrace(Exception e) {

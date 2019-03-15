@@ -1,13 +1,17 @@
 package com.neilab.plugins.tenacious
 
 import com.neilab.plugins.tenacious.util.TenaciousUtil
+import grails.compiler.GrailsCompileStatic
+import grails.gorm.DetachedCriteria
 import grails.transaction.Transactional
 import groovy.util.logging.Slf4j
 import org.joda.time.DateTime
+import org.springframework.transaction.TransactionStatus
 
 import java.util.concurrent.TimeUnit
 import groovy.json.JsonOutput
 
+//@GrailsCompileStatic
 @Slf4j
 @Transactional
 class TenaciousService {
@@ -17,8 +21,8 @@ class TenaciousService {
     void performTasks(Map params, PersistentWorker worker) {
         def options = [failOnError: true, flush: false] << params
         Date now = new Date()
-        Map config = TenaciousUtil.getStaticPropertyValue(worker.getClass(), "tenacious", Map, [:])
-        Integer ma = worker.maxAttempts ?: config.maxAttempts
+        Map config = (Map)TenaciousUtil.getStaticPropertyValue(worker.getClass(), "tenacious", Map, [:])
+        Integer ma = (Integer)(worker.maxAttempts ?: config.maxAttempts as Integer)
         String qn = worker.queueName ?: config.queueName
 
         try {
@@ -39,14 +43,15 @@ class TenaciousService {
 
                 eq("active", true)
 
-                lock true
+                lock true //TODO: File ticket, prevents @GrailsCompileStatic with Cannot find matching method com.neilab.plugins.tenacious.TenaciousService#lock(boolean).
             })
+
 
             worker.beforeWork()
 
-            for (task in taskData) {
-                PersistentTaskData.withNewTransaction { status ->
-                    PersistentTaskData t = task //.lock()
+            for (t in taskData) {
+                PersistentTaskData.withNewTransaction { TransactionStatus status ->
+                    PersistentTaskData task = (PersistentTaskData)t //.lock()
                     worker.beforeTask(task)
                     task.resume(failOnError: options.failOnError, flush: options.flush)
                     worker.afterTask(task)
@@ -85,7 +90,7 @@ class TenaciousService {
         Boolean processedTask = false
         //TODO: Throw excption if task in wrong queue
         String taskClassName = task.getClass().name
-        Map config = TenaciousUtil.getStaticPropertyValue(task.getClass(),"tenacious",Map,[:])
+        Map config = (Map)TenaciousUtil.getStaticPropertyValue(task.getClass(),"tenacious",Map,[:])
         PersistentTaskData existingTaskData = null
         PersistentTaskData taskData =   (actionName ? (existingTaskData =
                 PersistentTaskData.where {
@@ -95,7 +100,7 @@ class TenaciousService {
                 }.get()) : null) ?: new PersistentTaskData(handler: taskClassName)
 
         taskData.action = actionName
-        taskData.priority = task.priority ?: config.priority ?: 1
+        taskData.priority = (Integer) ( task.priority ?: config.priority ?: 1)
         taskData.queue = task.queueName ?: config.queueName ?: queue ?: "default"
         taskData.attempts = Math.max(0, taskData.attempts - 1)
         //TODO: If no queue specified, it should probably be on the on the class upon which it was scheduled

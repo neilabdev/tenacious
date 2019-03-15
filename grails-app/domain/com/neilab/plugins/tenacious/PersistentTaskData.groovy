@@ -76,10 +76,20 @@ class PersistentTaskData   {
         PersistentTask persistentTask = (PersistentTask)options.task ?: this.task
         this.runAt = new Date()
 
+        Boolean enableSavepoint = Holders.grailsApplication.config.getProperty("tenacious.dataSource.savePoint",Boolean,false)
         try {
-            withNewTransaction { status ->
-                if([false].contains(persistentTask.perform(this.parseJsonData()))) {
-                    throw new PersistentException("Task returned false")
+            withTransaction {   org.springframework.transaction.TransactionStatus status ->
+                def savePoint = enableSavepoint ? status.createSavepoint() : null
+                try {
+                    if([false].contains(persistentTask.perform(this.parseJsonData()))) {
+                        throw new PersistentException("Task returned false")
+                    }
+                } catch( Exception e) {
+                    if(savePoint)
+                        status.rollbackToSavepoint(savePoint)
+                    else
+                        status.setRollbackOnly()
+                    throw e
                 }
             }
             this.failedAt = null

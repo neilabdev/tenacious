@@ -58,7 +58,7 @@ trait PersistentWorker<T extends PersistentWorker<T>> {
 
     void runTasks(Map params = [:]) {
         def ts = applicationContext.getBean("tenaciousService") //as TenaciousService
-        ts?.performTasks(params,this) //TenaciousUtil.performTasks(params,this)
+        ts.performTasks(params,this) //TenaciousUtil.performTasks(params,this)
     }
 
 
@@ -69,12 +69,12 @@ trait PersistentWorker<T extends PersistentWorker<T>> {
     static def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass,String action, boolean immediate = false) {
         //TODO:Refactor
         def ts = applicationContext.getBean("tenaciousService")  as TenaciousService
-        ts?.scheduleTask(params, taskClass,action, immediate)
+        ts.scheduleTask(params, taskClass,action, immediate)
     }
 
     static def scheduleTask(Map<String, Object> params = [:], PersistentTask task, String action , boolean immediate = false) {
-        //TODO:Refactor
-        TenaciousUtil.scheduleTask(params, task,action, null, immediate)
+        def ts = applicationContext.getBean("tenaciousService")  as TenaciousService
+        ts.scheduleTask(params,task,action,immediate)
     }
 
     private String parseStacktrace(Exception e) {

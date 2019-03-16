@@ -116,7 +116,7 @@ class PersistentTaskData   {
         }
 
         try {
-            return this.save(failOnError: options.failOnError, flush: options.flush)
+            return this // .save(failOnError: options.failOnError, flush: options.flush)
         } catch(Exception e) {
             log.error("Unable to save persistent job state failure with id: ${this.id} because: ${e.stackTrace.join("\n\t")}")
         }

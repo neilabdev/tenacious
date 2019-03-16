@@ -7,6 +7,7 @@ import grails.transaction.Transactional
 import groovy.util.logging.Slf4j
 import org.joda.time.DateTime
 import org.springframework.transaction.TransactionStatus
+import org.springframework.transaction.annotation.Propagation
 
 import java.util.concurrent.TimeUnit
 import groovy.json.JsonOutput
@@ -17,6 +18,15 @@ import groovy.json.JsonOutput
 class TenaciousService {
     def tenaciousFactoryService
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected PersistentTaskData runTask(Map params=[:], PersistentWorker worker, PersistentTaskData task) {
+        def options = [:] << params
+        worker.beforeTask(task)
+        task.resume()
+        worker.afterTask(task)
+        return task
+    }
+
     void performTasks(Map params, PersistentWorker worker) {
         def options = [failOnError: true, flush: false] << params
         Date now = new Date()
@@ -26,9 +36,9 @@ class TenaciousService {
         Integer max_jobs = worker.maxJobs
 
         try {
-            PersistentTaskData.withNewTransaction { TransactionStatus status ->
+           // PersistentTaskData.withTransaction() { TransactionStatus st ->
                 worker.initWork()
-                def taskData = PersistentTaskData.createCriteria().list(order: "desc", sort: "priority", max: max_jobs, {
+                List <PersistentTaskData> taskData = PersistentTaskData.createCriteria().list(order: "desc", sort: "priority", max: max_jobs, {
                     if (ma instanceof Integer && ma > 0) {
                         lt("attempts", ma)
                     }
@@ -50,18 +60,22 @@ class TenaciousService {
                 worker.beforeWork()
 
                 for (t in taskData) {
-                    PersistentTaskData task = (PersistentTaskData) t //.lock()
-                    worker.beforeTask(task)
-                    task.resume(failOnError: options.failOnError, flush: options.flush)
-                    worker.afterTask(task)
-                    status.flush()
+                   // PersistentTaskData.withNewTransaction { TransactionStatus status ->
 
-                    if ((worker.restInterval ?: 0) > 0) {
-                        TimeUnit.MILLISECONDS.sleep(worker.restInterval)
-                    }
+                        runTask(options,worker,t).save(failOnError: options.failOnError, flush: options.flush)
+                      /*  PersistentTaskData task = (PersistentTaskData) PersistentTaskData.lock(t.id) //t //.lock()
+                        worker.beforeTask(task)
+                        task.resume(failOnError: options.failOnError, flush: options.flush)
+                        worker.afterTask(task)
+                        status.flush()
+*/
+                        if ((worker.restInterval ?: 0) > 0) {
+                            TimeUnit.MILLISECONDS.sleep(worker.restInterval)
+                        }
+                   // }
                 }
                 worker.afterWork()
-            } // transactionEnd
+           // } // transactionEnd
         } catch (Exception e) {
             log.error("Unable to performTasks because: ${e.stackTrace.join('\n\t')}")
         } //try
@@ -106,7 +120,7 @@ class TenaciousService {
             taskData.runAt = DateTime.now().plusSeconds(task.minDelay).toDate()
         taskData.params = JsonOutput.toJson(params ?: [:])
 
-        return immediate ? taskData.resume(task: task) : taskData.save()
+        return immediate ? taskData.resume(task: task).save() : taskData.save()
     }
 
     def scheduleTask(Map<String, Object> params = [:], PersistentTask task, String action, boolean immediate = false) {

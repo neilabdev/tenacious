@@ -16,53 +16,52 @@ import groovy.json.JsonOutput
 @Transactional
 class TenaciousService {
     def tenaciousFactoryService
-    //def transactional = false
 
     void performTasks(Map params, PersistentWorker worker) {
         def options = [failOnError: true, flush: false] << params
         Date now = new Date()
-        Map config = (Map)TenaciousUtil.getStaticPropertyValue(worker.getClass(), "tenacious", Map, [:])
-        Integer ma = (Integer)(worker.maxAttempts ?: config.maxAttempts as Integer)
+        Map config = (Map) TenaciousUtil.getStaticPropertyValue(worker.getClass(), "tenacious", Map, [:])
+        Integer ma = (Integer) (worker.maxAttempts ?: config.maxAttempts as Integer)
         String qn = worker.queueName ?: config.queueName
+        Integer max_jobs = worker.maxJobs
 
         try {
-            worker.initWork()
-            def taskData = PersistentTaskData.createCriteria().list(order: "desc", sort: "priority", max: worker.maxJobs, {
-                if (ma instanceof Integer && ma > 0) {
-                    lt("attempts", ma)
-                }
+            PersistentTaskData.withNewTransaction { TransactionStatus status ->
+                worker.initWork()
+                def taskData = PersistentTaskData.createCriteria().list(order: "desc", sort: "priority", max: max_jobs, {
+                    if (ma instanceof Integer && ma > 0) {
+                        lt("attempts", ma)
+                    }
 
-                if (qn) {
-                    eq("queue", qn)
-                }
+                    if (qn) {
+                        eq("queue", qn)
+                    }
 
-                or {
-                    isNull("runAt")
-                    lt("runAt", now)
-                }
+                    or {
+                        isNull("runAt")
+                        lt("runAt", now)
+                    }
 
-                eq("active", true)
+                    eq("active", true)
 
-                lock true //TODO: File ticket, prevents @GrailsCompileStatic with Cannot find matching method com.neilab.plugins.tenacious.TenaciousService#lock(boolean).
-            })
+                    lock true //TODO: File ticket, prevents @GrailsCompileStatic with Cannot find matching method com.neilab.plugins.tenacious.TenaciousService#lock(boolean).
+                })
 
+                worker.beforeWork()
 
-            worker.beforeWork()
-
-            for (t in taskData) {
-                PersistentTaskData.withNewTransaction { TransactionStatus status ->
-                    PersistentTaskData task = (PersistentTaskData)t //.lock()
+                for (t in taskData) {
+                    PersistentTaskData task = (PersistentTaskData) t //.lock()
                     worker.beforeTask(task)
                     task.resume(failOnError: options.failOnError, flush: options.flush)
                     worker.afterTask(task)
                     status.flush()
-                }
 
-                if ((worker.restInterval ?: 0) > 0) {
-                    TimeUnit.MILLISECONDS.sleep(worker.restInterval)
+                    if ((worker.restInterval ?: 0) > 0) {
+                        TimeUnit.MILLISECONDS.sleep(worker.restInterval)
+                    }
                 }
-            }
-            worker.afterWork()
+                worker.afterWork()
+            } // transactionEnd
         } catch (Exception e) {
             log.error("Unable to performTasks because: ${e.stackTrace.join('\n\t')}")
         } //try
@@ -86,13 +85,12 @@ class TenaciousService {
         this.scheduleTask(params, task, null, null, immediate)
     }
 
-    def scheduleTask(Map<String, Object> params = [:], PersistentTask task, String actionName  , String queue  , boolean immediate = false) { //TODO: MOVE TO SERVICE
-        Boolean processedTask = false
+    def scheduleTask(Map<String, Object> params = [:], PersistentTask task, String actionName, String queue, boolean immediate = false) {
         //TODO: Throw excption if task in wrong queue
         String taskClassName = task.getClass().name
-        Map config = (Map)TenaciousUtil.getStaticPropertyValue(task.getClass(),"tenacious",Map,[:])
+        Map config = (Map) TenaciousUtil.getStaticPropertyValue(task.getClass(), "tenacious", Map, [:])
         PersistentTaskData existingTaskData = null
-        PersistentTaskData taskData =   (actionName ? (existingTaskData =
+        PersistentTaskData taskData = (actionName ? (existingTaskData =
                 PersistentTaskData.where {
                     handler == taskClassName
                     action == actionName
@@ -100,15 +98,15 @@ class TenaciousService {
                 }.get()) : null) ?: new PersistentTaskData(handler: taskClassName)
 
         taskData.action = actionName
-        taskData.priority = (Integer) ( task.priority ?: config.priority ?: 1)
+        taskData.priority = (Integer) (task.priority ?: config.priority ?: 1)
         taskData.queue = task.queueName ?: config.queueName ?: queue ?: "default"
         taskData.attempts = Math.max(0, taskData.attempts - 1)
         //TODO: If no queue specified, it should probably be on the on the class upon which it was scheduled
-        if(!existingTaskData && task.minDelay?.intValue() > 0)
+        if (!existingTaskData && task.minDelay?.intValue() > 0)
             taskData.runAt = DateTime.now().plusSeconds(task.minDelay).toDate()
         taskData.params = JsonOutput.toJson(params ?: [:])
 
-        return immediate ?   taskData.resume(task: task) : taskData.save()
+        return immediate ? taskData.resume(task: task) : taskData.save()
     }
 
     def scheduleTask(Map<String, Object> params = [:], PersistentTask task, String action, boolean immediate = false) {

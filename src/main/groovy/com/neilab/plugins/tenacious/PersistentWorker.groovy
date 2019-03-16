@@ -25,49 +25,36 @@ trait PersistentWorker<T extends PersistentWorker<T>> {
         } catch(Exception e) {
             e.printStackTrace()
         }
-
     }
 
     def execute() {
         this.execute(null)
     }
 
-    def initWork() {
+    def initWork() { }
 
-    }
+    def beforeWork() { }
 
-    def beforeWork() {
+    def afterWork() { }
 
-    }
+    def beforeTask(PersistentTaskData data) { }
 
-    def afterWork() {
+    def afterTask(PersistentTaskData data) { }
 
-    }
-
-    def beforeTask(PersistentTaskData data) {
-
-    }
-
-    def afterTask(PersistentTaskData data) {
-
+    void runTasks(Map params = [:]) {
+        def ts = applicationContext.getBean("tenaciousService") //as TenaciousService
+        ts.performTasks(params,this)
     }
 
     static def run(Map params=[:]) {
         throw new UnsupportedOperationException("Unable to execute method which should have been dynamically overridden")
     }
 
-    void runTasks(Map params = [:]) {
-        def ts = applicationContext.getBean("tenaciousService") //as TenaciousService
-        ts.performTasks(params,this) //TenaciousUtil.performTasks(params,this)
-    }
-
-
     static def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass, boolean immediate = false) {
         this.scheduleTask(params,taskClass,(String)null,immediate)
     }
 
     static def scheduleTask(Map<String, Object> params = [:], Class<PersistentTask> taskClass,String action, boolean immediate = false) {
-        //TODO:Refactor
         def ts = applicationContext.getBean("tenaciousService")  as TenaciousService
         ts.scheduleTask(params, taskClass,action, immediate)
     }
@@ -76,12 +63,4 @@ trait PersistentWorker<T extends PersistentWorker<T>> {
         def ts = applicationContext.getBean("tenaciousService")  as TenaciousService
         ts.scheduleTask(params,task,action,immediate)
     }
-
-    private String parseStacktrace(Exception e) {
-        StringWriter errors = new StringWriter()
-        e.printStackTrace(new PrintWriter(errors))
-        return e.toString()
-    }
 }
-
-//class MyTask implements PersistentTask {}

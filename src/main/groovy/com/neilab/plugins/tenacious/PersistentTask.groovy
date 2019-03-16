@@ -3,7 +3,7 @@ package com.neilab.plugins.tenacious
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-trait PersistentTask { // or PersistentTaskAbility
+trait PersistentTask {
 
     String queueName //= "default"
     Integer priority //= 1
@@ -12,7 +12,6 @@ trait PersistentTask { // or PersistentTaskAbility
     Integer minDelay //= 0
 
     def perform(Map params=[:]) {
-      //  ExecutorService executor = Executors.newFixedThreadPool(4);
         return false
     }
 }

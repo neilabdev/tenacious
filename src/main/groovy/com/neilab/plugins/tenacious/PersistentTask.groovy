@@ -11,6 +11,7 @@ trait PersistentTask {
     Integer maxRuntime //= 0
     Integer minDelay //= 0
 
+    def config() {}
     def perform(Map params=[:]) {
         return false
     }

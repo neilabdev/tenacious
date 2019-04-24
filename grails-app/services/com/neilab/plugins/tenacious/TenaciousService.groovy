@@ -111,6 +111,7 @@ class TenaciousService {
                     active == true
                 }.get()) : null) ?: new PersistentTaskData(handler: taskClassName)
 
+        task.config()
         taskData.action = actionName
         taskData.priority = (Integer) (task.priority ?: config.priority ?: 1)
         taskData.queue = task.queueName ?: config.queueName ?: queue ?: "default"

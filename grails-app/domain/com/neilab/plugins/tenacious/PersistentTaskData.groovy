@@ -83,7 +83,7 @@ class PersistentTaskData   {
                 def savePoint = enableSavepoint ? status.createSavepoint() : null
                 try {
                     if([false].contains(persistentTask.perform(this.parseJsonData()))) {
-                        throw new PersistentException("Task returned false")
+                        throw new PersistentException("${this.handler}: task returned false")
                     }
                 } catch( Exception e) {
                     if(savePoint)

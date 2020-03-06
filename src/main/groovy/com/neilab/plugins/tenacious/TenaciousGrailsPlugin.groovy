@@ -2,7 +2,6 @@ package com.neilab.plugins.tenacious
 
 import com.neilab.plugins.tenacious.artefact.TenaciousArtefactHandler
 import grails.plugins.*
-import static grails.plugins.quartz.GrailsJobClassConstants.*;
 
 class TenaciousGrailsPlugin extends Plugin {
 

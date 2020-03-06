@@ -1,7 +1,7 @@
 package com.neilab.plugins.tenacious
 
 import com.neilab.plugins.tenacious.util.TenaciousUtil
-import grails.transaction.Transactional
+import grails.gorm.transactions.Transactional
 
 import java.util.concurrent.TimeUnit
 

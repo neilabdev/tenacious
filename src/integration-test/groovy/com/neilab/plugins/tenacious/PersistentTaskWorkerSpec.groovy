@@ -2,8 +2,11 @@ package com.neilab.plugins.tenacious
 
 import com.neilab.plugins.tenacious.test.SampleJob
 import com.neilab.plugins.tenacious.test.SampleTask
-import grails.test.mixin.integration.Integration
-import grails.transaction.Rollback
+import grails.gorm.transactions.Rollback
+import grails.testing.mixin.integration.Integration
+
+//import grails.test.mixin.integration.Integration
+//import grails.transaction.Rollback
 //import org.springframework.test.annotation.Rollback
 import spock.lang.*
 
@@ -14,13 +17,17 @@ class PersistentTaskWorkerSpec extends Specification  {
     void "task can be scheduled"() {
         given: "scheduled jobs"
             def task = [
-                    sample1: SampleJob.scheduleTask(SampleTask, title:"sample 1",result:true),
+                    sample1: SampleJob.scheduleTask(SampleTask,title:"sample 1",result:true),
                     sample2: SampleJob.scheduleTask(SampleTask,title:"sample 2",result:false)
             ]
+        and:
+            flushAndClear()
+        and:
             def total_count = PersistentTaskData.count()
             def active_count = [before_run: PersistentTaskData.isActive.count() ]
         when: "processing jobs"
             tenaciousService.performTasks(SampleJob, flush:true)
+        and:
           //  SampleJob.run(flush:true) //FIXME: Fix, while it works live, no inserts happen here despite correct save :(
             /* def first_row = PersistentTaskData.findById(1) //NOTE: This causes updated
             first_row.lastError = "foo"

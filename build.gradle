@@ -68,6 +68,13 @@ dependencies {
     testCompile "org.grails:grails-web-testing-support"
    // testCompile "org.grails:grails-plugin-testing"
     compile group: 'joda-time', name: 'joda-time', version: '2.9.9'
+
+
+
+    runtime "com.h2database:h2"  //NOTE: need for test to run
+    runtime "org.apache.tomcat:tomcat-jdbc"
+    runtime "org.grails.plugins:hibernate5"
+    runtime "org.hibernate:hibernate-core:5.4.0.Final"
 }
 
 bootRun {

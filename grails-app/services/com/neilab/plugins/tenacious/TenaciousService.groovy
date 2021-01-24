@@ -1,13 +1,11 @@
 package com.neilab.plugins.tenacious
 
 import com.neilab.plugins.tenacious.util.TenaciousUtil
-import grails.compiler.GrailsCompileStatic
-import grails.gorm.DetachedCriteria
-import grails.transaction.Transactional
 import groovy.util.logging.Slf4j
 import org.joda.time.DateTime
-import org.springframework.transaction.TransactionStatus
 import org.springframework.transaction.annotation.Propagation
+import grails.gorm.transactions.*
+
 
 import java.util.concurrent.TimeUnit
 import groovy.json.JsonOutput

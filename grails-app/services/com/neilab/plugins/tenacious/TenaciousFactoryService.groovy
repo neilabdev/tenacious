@@ -1,6 +1,6 @@
 package com.neilab.plugins.tenacious
 
-import grails.transaction.Transactional
+import grails.gorm.transactions.Transactional
 import grails.spring.BeanBuilder
 
 @Transactional

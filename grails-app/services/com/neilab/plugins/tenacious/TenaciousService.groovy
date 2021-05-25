@@ -10,7 +10,7 @@ import grails.gorm.transactions.*
 import java.util.concurrent.TimeUnit
 import groovy.json.JsonOutput
 
-//@GrailsCompileStatic
+
 @Slf4j
 @Transactional
 class TenaciousService {
@@ -77,9 +77,9 @@ class TenaciousService {
         def options = [failOnError: true, flush: false] << params
         Date now = new Date()
         Map config = (Map) TenaciousUtil.getStaticPropertyValue(worker.getClass(), "tenacious", Map, [:])
-        Integer ma = (Integer) (worker.maxAttempts ?: config.maxAttempts as Integer)
-        String qn = worker.queueName ?: config.queueName
-        Integer max_jobs = worker.maxJobs
+        Integer ma = (config.maxAttempts  ?: worker.maxAttempts) as Integer
+        String qn =  config.queueName ?: worker.queueName
+        Integer max_jobs = (config.maxJobs ?: worker.maxJobs) as Integer
 
         try {
             worker.initWork()

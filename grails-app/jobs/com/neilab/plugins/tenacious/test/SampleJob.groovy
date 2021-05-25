@@ -1,6 +1,5 @@
 package com.neilab.plugins.tenacious.test
-
-import com.neilab.plugins.tenacious.PersistentWorker
+import com.neilab.plugins.tenacious.*
 
 class SampleJob implements PersistentWorker  {
     {

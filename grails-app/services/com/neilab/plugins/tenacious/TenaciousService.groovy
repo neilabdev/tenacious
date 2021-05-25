@@ -1,12 +1,12 @@
 package com.neilab.plugins.tenacious
 
-import com.neilab.plugins.tenacious.util.TenaciousUtil
+import com.neilab.plugins.tenacious.util.*
+import com.neilab.plugins.tenacious.exception.*
+import grails.util.Holders
 import groovy.util.logging.Slf4j
 import org.joda.time.DateTime
 import org.springframework.transaction.annotation.Propagation
 import grails.gorm.transactions.*
-
-
 import java.util.concurrent.TimeUnit
 import groovy.json.JsonOutput
 
@@ -17,11 +17,59 @@ class TenaciousService {
     def tenaciousFactoryService
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected PersistentTaskData runTask(Map params=[:], PersistentWorker worker, PersistentTaskData task) {
+    protected PersistentTaskData runTask(Map params = [:], PersistentWorker worker, PersistentTaskData task) {
         def options = [:] << params
         worker.beforeTask(task)
-        task.resume()
+        resumeTask(task)
         worker.afterTask(task)
+        return task
+    }
+
+    private def resumeTask(Map extra = [:], PersistentTaskData task) {
+        Map options = [failOnError: false, flush: false] << extra
+        PersistentTask persistentTask = (PersistentTask) (options.task instanceof PersistentTask ? options.task : task.task)
+        Boolean enableSavepoint = Holders.grailsApplication.config.getProperty("tenacious.dataSource.savePoint", Boolean, false)
+        task.runAt = new Date()
+
+        try {
+
+            PersistentTaskData.withTransaction { status ->
+                def savePoint = enableSavepoint ? status.createSavepoint() : null
+                try {
+                    if ([false].contains(persistentTask.perform(task.parameterMap))) {
+                        throw new PersistentException("${task.handler}: task returned false")
+                    }
+                } catch (Exception e) {
+                    if (savePoint)
+                        status.rollbackToSavepoint(savePoint)
+                    else
+                        status.setRollbackOnly()
+                    throw e
+                }
+            }
+
+            task.failedAt = null
+            task.attempts = Math.max(0, task.attempts ?: 1)
+            task.active = false
+        } catch (CancelException c) {
+            task.lastError = TenaciousUtil.parseStacktrace(c)
+            task.attempts = Math.max(0, task.attempts) + 1
+            task.failedAt = new Date()
+            task.active = false
+            log.info("task cancelled with id: ${task.id} params: ${task.params}  exception message: '${c.message}'")
+        } catch (Exception e) {
+            task.lastError = TenaciousUtil.parseStacktrace(e)
+            task.attempts = Math.max(0, task.attempts) + 1
+            task.failedAt = new Date()
+            task.runAt = task.nextRunDate()
+
+            if (persistentTask.maxAttempts && task.attempts > persistentTask.maxAttempts) {
+                task.active = false
+            }
+
+            log.warn("failed execution of task id: ${task.id} params: ${task.params}  exception: ${e.stackTrace.join("\n\t")}")
+        }
+
         return task
     }
 
@@ -34,46 +82,38 @@ class TenaciousService {
         Integer max_jobs = worker.maxJobs
 
         try {
-           // PersistentTaskData.withTransaction() { TransactionStatus st ->
-                worker.initWork()
-                List <PersistentTaskData> taskData = PersistentTaskData.createCriteria().list(order: "desc", sort: "priority", max: max_jobs, {
-                    if (ma instanceof Integer && ma > 0) {
-                        lt("attempts", ma)
-                    }
-
-                    if (qn) {
-                        eq("queue", qn)
-                    }
-
-                    or {
-                        isNull("runAt")
-                        lt("runAt", now)
-                    }
-
-                    eq("active", true)
-
-                    lock true //TODO: File ticket, prevents @GrailsCompileStatic with Cannot find matching method com.neilab.plugins.tenacious.TenaciousService#lock(boolean).
-                })
-
-                worker.beforeWork()
-
-                for (t in taskData) {
-                   // PersistentTaskData.withNewTransaction { TransactionStatus status ->
-
-                        runTask(options,worker,t).save(failOnError: options.failOnError, flush: options.flush)
-                      /*  PersistentTaskData task = (PersistentTaskData) PersistentTaskData.lock(t.id) //t //.lock()
-                        worker.beforeTask(task)
-                        task.resume(failOnError: options.failOnError, flush: options.flush)
-                        worker.afterTask(task)
-                        status.flush()
-*/
-                        if ((worker.restInterval ?: 0) > 0) {
-                            TimeUnit.MILLISECONDS.sleep(worker.restInterval)
+            worker.initWork()
+            List<PersistentTaskData> taskData =
+                    PersistentTaskData.createCriteria().list(order: "desc", sort: "priority", max: max_jobs, {
+                        if (ma instanceof Integer && ma > 0) {
+                            lt("attempts", ma)
                         }
-                   // }
+
+                        if (qn) {
+                            eq("queue", qn)
+                        }
+
+                        or {
+                            isNull("runAt")
+                            lt("runAt", now)
+                        }
+
+                        eq("active", true)
+
+                        lock true
+                    })
+
+            worker.beforeWork()
+
+            for (t in taskData) {
+                runTask(options, worker, t).save(failOnError: options.failOnError, flush: options.flush)
+
+                if ((worker.restInterval ?: 0) > 0) {
+                    TimeUnit.MILLISECONDS.sleep(worker.restInterval)
                 }
-                worker.afterWork()
-           // } // transactionEnd
+            }
+
+            worker.afterWork()
         } catch (Exception e) {
             log.error("Unable to performTasks because: ${e.stackTrace.join('\n\t')}")
         } //try
@@ -119,7 +159,7 @@ class TenaciousService {
             taskData.runAt = DateTime.now().plusSeconds(task.minDelay).toDate()
         taskData.params = JsonOutput.toJson(params ?: [:])
 
-        return immediate ? taskData.resume(task: task).save() : taskData.save()
+        return immediate ?  resumeTask(taskData,task: task).save() : taskData.save()
     }
 
     def scheduleTask(Map<String, Object> params = [:], PersistentTask task, String action, boolean immediate = false) {

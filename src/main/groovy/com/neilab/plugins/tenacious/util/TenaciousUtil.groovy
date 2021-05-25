@@ -1,9 +1,9 @@
 package com.neilab.plugins.tenacious.util
 
-import com.neilab.plugins.tenacious.PersistentTask
+import com.neilab.plugins.tenacious.*
 import com.neilab.plugins.tenacious.PersistentTaskData
 import com.neilab.plugins.tenacious.PersistentWorker
-import grails.util.Environment
+import grails.util.*
 import grails.util.GrailsClassUtils
 import groovy.json.JsonOutput
 import org.joda.time.DateTime
@@ -19,4 +19,12 @@ class TenaciousUtil {
 
         return defaultValue
     }
+
+
+    static String parseStacktrace(Exception e) {
+        StringWriter errors = new StringWriter()
+        e.printStackTrace(new PrintWriter(errors))
+        return e.toString()
+    }
+
 }

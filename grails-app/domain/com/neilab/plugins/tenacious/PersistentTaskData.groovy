@@ -1,7 +1,6 @@
 package com.neilab.plugins.tenacious
 
-import com.neilab.plugins.tenacious.exception.CancelException
-import com.neilab.plugins.tenacious.exception.PersistentException
+import com.neilab.plugins.tenacious.exception.*
 import grails.compiler.GrailsCompileStatic
 import grails.gorm.DetachedCriteria
 import grails.util.Holders
@@ -72,70 +71,16 @@ class PersistentTaskData   {
 
     static transients = ['task']
 
-    def resume(Map extra=[:]) {
-        Map options = [failOnError: false, flush: false] << extra
-        PersistentTask persistentTask = (PersistentTask)(options.task instanceof PersistentTask ? options.task :  this.task)
-        this.runAt = new Date()
-
-        Boolean enableSavepoint = Holders.grailsApplication.config.getProperty("tenacious.dataSource.savePoint",Boolean,false)
-        try {
-            withTransaction {   org.springframework.transaction.TransactionStatus status ->
-                def savePoint = enableSavepoint ? status.createSavepoint() : null
-                try {
-                    if([false].contains(persistentTask.perform(this.parseJsonData()))) {
-                        throw new PersistentException("${this.handler}: task returned false")
-                    }
-                } catch( Exception e) {
-                    if(savePoint)
-                        status.rollbackToSavepoint(savePoint)
-                    else
-                        status.setRollbackOnly()
-                    throw e
-                }
-            }
-            this.failedAt = null
-            this.attempts = Math.max(0,this.attempts ?: 1)
-            this.active = false
-        } catch (CancelException c) {
-            this.lastError = parseStacktrace(c)
-            this.attempts = Math.max(0,this.attempts) + 1
-            this.failedAt = new Date()
-            this.active = false
-            log.info("task cancelled with id: ${this.id} params: ${this.params}  exception message: '${c.message}'")
-        } catch (Exception e) {
-            this.lastError = parseStacktrace(e)
-            this.attempts = Math.max(0,this.attempts) + 1
-            this.failedAt = new Date()
-            this.runAt = nextRunDate()
-
-            if(persistentTask.maxAttempts && this.attempts > persistentTask.maxAttempts) {
-                this.active = false
-            }
-
-            log.warn("failed execution of task id: ${this.id} params: ${this.params}  exception: ${e.stackTrace.join("\n\t")}")
-        }
-
-        try {
-            return this // .save(failOnError: options.failOnError, flush: options.flush)
-        } catch(Exception e) {
-            log.error("Unable to save persistent job state failure with id: ${this.id} because: ${e.stackTrace.join("\n\t")}")
-        }
-    }
 
     private  Date nextRunDate() {
         Integer n = this.attempts ?: 0
         return  DateTime.now().plusSeconds((5+n)*4).toDate()
     }
 
-    private Map parseJsonData() {
+    Map getParameterMap() {
         def jsonSlurper = new JsonSlurper()
         def object = this.params ? jsonSlurper.parseText(this.params) : [:]
         return (Map)(object instanceof  Map ? object : [:])
     }
 
-    private String parseStacktrace(Exception e) {
-        StringWriter errors = new StringWriter()
-        e.printStackTrace(new PrintWriter(errors))
-        return e.toString()
-    }
 }

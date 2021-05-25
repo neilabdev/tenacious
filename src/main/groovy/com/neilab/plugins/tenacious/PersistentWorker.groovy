@@ -1,8 +1,7 @@
 package com.neilab.plugins.tenacious
 
-import com.neilab.plugins.tenacious.util.TenaciousUtil
+import com.neilab.plugins.tenacious.util.*
 import com.neilab.plugins.tenacious.TenaciousService
-import grails.util.GrailsNameUtils
 import groovy.transform.CompileStatic
 import org.joda.time.DateTime
 

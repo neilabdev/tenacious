@@ -1,11 +1,11 @@
 package com.neilab.plugins.tenacious
-import com.neilab.plugins.tenacious.artefact.TenaciousArtefactHandler
+import com.neilab.plugins.tenacious.artefact.*
 import grails.plugins.*
 
 class TenaciousGrailsPlugin extends Plugin {
 
     // the version or versions of Grails the plugin is designed for
-    def grailsVersion = "3.0.0 > *"
+    def grailsVersion = "3.1.5 > *"
     // resources that are excluded from plugin packaging
     def artefacts = [com.neilab.plugins.tenacious.artefact.TenaciousArtefactHandler]
     def pluginExcludes = [
@@ -21,7 +21,7 @@ class TenaciousGrailsPlugin extends Plugin {
 
     // TODO Fill in these fields
     def title = "Tenacious" // Headline display name of the plugin
-    def author = "ghost"
+    def author = "James Whitfield"
     def authorEmail = ""
     def description = '''\
 Brief summary/description of the plugin.
@@ -33,22 +33,22 @@ Brief summary/description of the plugin.
     // Extra (optional) plugin metadata
 
     // License: one of 'APACHE', 'GPL2', 'GPL3'
-//    def license = "APACHE"
+    def license = "APACHE"
 
     // Details of company behind the plugin (if there is one)
-//    def organization = [ name: "My Company", url: "http://www.my-company.com/" ]
+    def organization = [ name: "NEiLAB, LLC", url: "http://neilab.com/" ]
 
     // Any additional developers beyond the author specified above.
-//    def developers = [ [ name: "Joe Bloggs", email: "joe@bloggs.net" ]]
+    def developers = [ [ name: "James Whitfield", email: "ghost@neilab.com" ]]
 
     // Location of the plugin's issue tracker.
 //    def issueManagement = [ system: "JIRA", url: "http://jira.grails.org/browse/GPMYPLUGIN" ]
 
     // Online location of the plugin's browseable source code.
-//    def scm = [ url: "http://svn.codehaus.org/grails-plugins/" ]
+    def scm = [ url: "https://github.com/neilabdev/tenacious" ]
 
     //def dependsOn = [quartz: "* > 2.0"]
-    def loadAfter = ['quartz']
+    List loadAfter = ['quartz','hibernate3', 'hibernate4', 'hibernate5']
     def observe = ['quartz']
 
     Closure doWithSpring() {

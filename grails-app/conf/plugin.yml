@@ -1,3 +1,4 @@
-
-tenacious.dataSource.savePoint: false
+tenacious:
+  dataSource:
+    savePoint: false
 
